@@ -27,7 +27,7 @@ export default function SearchViewComponent(params: { plugin: MsgHandlerPlugin }
 	const [allOpenStatus, setAllOpenStatus] = useState<AllOpenStatus>();
 
 	// Handle Search Promises in Order
-	const promiseQueueRef = useRef([]);
+	const promiseQueueRef = useRef<any>([]);
 
 	useEffect(() => {
 		const runPromiseQueue = async () => {
@@ -36,7 +36,7 @@ export default function SearchViewComponent(params: { plugin: MsgHandlerPlugin }
 				try {
 					await nextPromise();
 				} catch (error) {
-					if (plugin.settings.logEnabled) console.log('Search promise failed', error);
+					//if (plugin.settings.logEnabled) console.log('Search promise failed', error);
 				} finally {
 					promiseQueueRef.current.shift(); // remove the completed promise from the queue
 				}
@@ -44,7 +44,7 @@ export default function SearchViewComponent(params: { plugin: MsgHandlerPlugin }
 		};
 
 		if (searchKey === '' || searchKey === null || searchKey === undefined) {
-			setSearchResults(null);
+			setSearchResults(undefined);
 		} else {
 			promiseQueueRef.current.push(runSearch);
 			runPromiseQueue();
@@ -61,14 +61,14 @@ export default function SearchViewComponent(params: { plugin: MsgHandlerPlugin }
 	const runSearch = async () => {
 		let currentSearchResults = [];
 		// Get search results
-		let results = await searchMsgFilesWithKey({ key: searchKey });
+		let results = await searchMsgFilesWithKey({ key: searchKey! });
 		// Loop results to populate component state
 		for (let result of results) {
 			let indexOfMaxScore = null;
 			let exactMatch = false;
 			// First check exact match
 			const exactMatchIndex = result.findIndex((r) =>
-				r?.target.toLowerCase().includes(searchKey.toLowerCase())
+				r?.target.toLowerCase().includes(searchKey!.toLowerCase())
 			);
 			if (exactMatchIndex !== -1) {
 				indexOfMaxScore = exactMatchIndex;
@@ -88,8 +88,8 @@ export default function SearchViewComponent(params: { plugin: MsgHandlerPlugin }
 				// Prepare the exact match text manually
 				let indexOfSearchMatch = result[indexOfMaxScore].target
 					.toLowerCase()
-					.indexOf(searchKey.toLowerCase());
-				let lengthOfSearchKey = searchKey.length;
+					.indexOf(searchKey!.toLowerCase());
+				let lengthOfSearchKey = searchKey!.length;
 				let originalTextOfSearchKey = result[indexOfMaxScore].target.substring(
 					indexOfSearchMatch,
 					indexOfSearchMatch + lengthOfSearchKey
@@ -110,14 +110,14 @@ export default function SearchViewComponent(params: { plugin: MsgHandlerPlugin }
 			if (highlightedResult) {
 				highlightedResult = getHighlightedPartOfSearchResult({
 					highlightedResult: replaceNewLinesAndCarriages(highlightedResult),
-					searchKey: searchKey,
+					searchKey: searchKey!,
 				});
 			}
 
 			// Push for display results
 			currentSearchResults.push({
 				result: result,
-				highlightedResult: highlightedResult,
+				highlightedResult: highlightedResult!,
 			});
 		}
 
@@ -156,7 +156,7 @@ export default function SearchViewComponent(params: { plugin: MsgHandlerPlugin }
 							return (
 								<SearchResultFileMatch
 									searchResult={searchResult}
-									allOpenStatus={allOpenStatus}
+									allOpenStatus={allOpenStatus!}
 									plugin={plugin}
 								/>
 							);
@@ -216,9 +216,7 @@ const SearchResultFileMatch = (params: {
 		const file = plugin.app.vault.getAbstractFileByPath(filePath);
 		if (file) {
 			plugin.app.workspace.trigger('file-menu', fileMenu, file, 'file-explorer');
-			if (isMouseEvent) {
-				fileMenu.showAtPosition({ x: e.pageX, y: e.pageY });
-			}
+		    fileMenu.showAtPosition({ x: e.pageX, y: e.pageY });
 		}
 	};
 
@@ -252,3 +250,4 @@ const SearchResultFileMatch = (params: {
 		</div>
 	);
 };
+

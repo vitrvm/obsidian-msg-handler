@@ -1,14 +1,12 @@
-import MsgHandlerPlugin from 'main';
 import { TFile } from 'obsidian';
+import MsgHandlerPlugin from 'main';
 import React, { useEffect, useState } from 'react';
-import { MSGAttachment, MSGRecipient, MSGRenderData } from 'types';
-import { getMsgContent } from 'utils';
 import { MdKeyboardArrowDown, MdKeyboardArrowRight, MdClose } from 'react-icons/md';
 import { HiChevronDoubleRight, HiChevronDoubleLeft } from 'react-icons/hi';
-import { FolderToSaveSuggestionModal } from 'modals';
+import { MSGAttachment, MSGRecipient, MSGRenderData } from 'types';
+import { getMsgContent } from 'utils';
 
-/* ------------ Main Renderer Component ------------ */
-
+/* --------------- Components ---------------- */
 export default function RendererViewComponent(params: { plugin: MsgHandlerPlugin; fileToRender: TFile }) {
 	const { plugin, fileToRender } = params;
 	const [messageContent, setMessageContent] = useState<MSGRenderData>();
@@ -19,20 +17,17 @@ export default function RendererViewComponent(params: { plugin: MsgHandlerPlugin
 		});
 	}, []);
 
+        /*
 	return (
 		messageContent && (
 			<>
 				<MSGHeaderComponent messageContent={messageContent} />
-				<MSGBodyComponent messageContent={messageContent} />
-				{messageContent.attachments.length > 0 && (
-					<MSGAttachmentsComponent messageAttachments={messageContent.attachments} plugin={plugin} />
-				)}
 			</>
 		)
 	);
+    */
+   return <><MSGHeaderComponent messageContent={messageContent!} /></>
 }
-
-/* ------------ Child Components ------------ */
 
 const MSGHeaderComponent = (params: { messageContent: MSGRenderData }) => {
 	const { messageContent } = params;
@@ -66,93 +61,6 @@ const MSGHeaderComponent = (params: { messageContent: MSGRenderData }) => {
 		</>
 	);
 };
-
-const MSGBodyComponent = (params: { messageContent: MSGRenderData }) => {
-	const { messageContent } = params;
-	const cleanMsgBody = (txt: string) => txt.replace(/[\r\n]+/g, '</br>');
-	const [open, setOpen] = useState<boolean>(true);
-	const toggleOpen = () => setOpen(!open);
-	return (
-		<>
-			<h3 onClick={toggleOpen} className="oz-cursor-pointer oz-msg-attachments-body-name">
-				<ToggleIndicator open={open} />
-				Message Body
-			</h3>
-			{open && (
-				<div
-					className="oz-msg-handler-body"
-					dangerouslySetInnerHTML={{ __html: cleanMsgBody(messageContent.body) }}></div>
-			)}
-		</>
-	);
-};
-
-const MSGAttachmentsComponent = (params: { messageAttachments: MSGAttachment[]; plugin: MsgHandlerPlugin }) => {
-	const { messageAttachments, plugin } = params;
-	const [open, setOpen] = useState<boolean>(true);
-	const toggleOpen = () => setOpen(!open);
-	return (
-		<>
-			<h3 onClick={toggleOpen} className="oz-cursor-pointer oz-msg-attachments-header-name">
-				<ToggleIndicator open={open} />
-				Attachments
-			</h3>
-			{open && (
-				<div className="oz-msg-handler-attachments">
-					{messageAttachments.map((attachment) => {
-						return (
-							<MSGSingleAttachmentComponent
-								key={attachment.fileName}
-								messageAttachment={attachment}
-								plugin={plugin}
-							/>
-						);
-					})}
-				</div>
-			)}
-		</>
-	);
-};
-
-const MSGSingleAttachmentComponent = (params: { messageAttachment: MSGAttachment; plugin: MsgHandlerPlugin }) => {
-	const { messageAttachment, plugin } = params;
-	const [open, setOpen] = useState<boolean>(false);
-	const toggleOpen = () => setOpen(!open);
-
-	const saveFileToVault = () => {
-		let modal = new FolderToSaveSuggestionModal(
-			plugin.app,
-			messageAttachment.fileBase64,
-			messageAttachment.fileName
-		);
-		modal.open();
-	};
-
-	const imgExtensions: string[] = ['.png', 'png', '.jpg', 'jpg', '.jpeg', 'jpeg'];
-
-	return (
-		<div className="oz-msg-single-attachment-wrapper">
-			<div onClick={toggleOpen} className="oz-cursor-pointer oz-msg-attachment-name">
-				{imgExtensions.includes(messageAttachment.fileExtension) ? (
-					<ToggleIndicator open={open} />
-				) : (
-					<MdClose className="msg-handler-react-icon" />
-				)}
-				{messageAttachment.fileName}
-				<button onClick={saveFileToVault}>Save File to Vault</button>
-			</div>
-			{open && (
-				<div className="oz-msg-attachment-display">
-					{imgExtensions.includes(messageAttachment.fileExtension) && (
-						<img src={`data:image/jpeg;base64,${messageAttachment.fileBase64}`} />
-					)}
-				</div>
-			)}
-		</div>
-	);
-};
-
-/* ------------ Helper Components ------------ */
 
 const RecipientList = (params: { recipients: MSGRecipient[] }) => {
 	const { recipients } = params;
@@ -200,6 +108,7 @@ const RecipientList = (params: { recipients: MSGRecipient[] }) => {
 		</>
 	);
 };
+
 
 const ToggleIndicator = (params: { open: boolean }) => {
 	const { open } = params;

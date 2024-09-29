@@ -1,6 +1,6 @@
-import { MSGReader } from './modules/msgreader.js';
-import MsgHandlerPlugin from 'main';
 import { MarkdownRenderer, Component, TFile } from 'obsidian';
+import MsgHandlerPlugin from 'main';
+import { MSGReader } from 'modules/msgreader';
 import { readEml, ReadedEmlJson } from 'eml-parse-js';
 import dayjs from 'dayjs';
 import { Base64 } from 'js-base64';
@@ -14,11 +14,7 @@ import {
 	Ext_MSGReader_Recipient,
 } from 'types';
 
-/**
- * This function is to get the MSGRenderData for provided Outlook MSG file under the path provided
- * @param params
- * @returns
- */
+
 export const getMsgContent = async (params: {
 	plugin: MsgHandlerPlugin;
 	msgFile: TFile;
@@ -46,24 +42,28 @@ export const getMsgContent = async (params: {
 		};
 	} else if (msgFile.extension === 'eml') {
 		let readedEmlJson = await readEmlFile({ emlFile: msgFile, plugin: plugin });
-		let sender = parseEmlSender({ senderText: readedEmlJson.headers.From });
+		let sender = parseEmlSender({ senderText: readedEmlJson.headers.From! });
 		return {
 			senderName: sender.senderName,
 			senderEmail: sender.senderEmail,
 			recipients: parseEMLRecipients({ readEmlJson: readedEmlJson }),
 			creationTime: dayjs(readedEmlJson.date).format('ddd, D MMM YYYY HH:mm:ss'),
 			subject: dataOrEmpty(readedEmlJson.subject),
-			body: cleanEMLBody({ text: readedEmlJson.text }),
+			body: cleanEMLBody({ text: readedEmlJson.text! }),
 			attachments: extractEMLAttachments({ emlFileReadJson: readedEmlJson }),
 		};
 	}
+    return {
+        senderName: '',
+        senderEmail: '',
+        recipients: [],
+        creationTime: '',
+        subject: '',
+        body: '',
+        attachments: [],
+    };
 };
 
-/**
- * Creates Header Dictionary coming from Msg Headers String
- * @param params
- * @returns { [key: string]: string }
- */
 function parseHeaders(params: { headers: string }): { [key: string]: string } {
 	const { headers } = params;
 	var parsedHeaders: { [key: string]: string } = {};
@@ -78,57 +78,6 @@ function parseHeaders(params: { headers: string }): { [key: string]: string } {
 	return parsedHeaders;
 }
 
-/**
- * From raw msg headers string, it will extract the creation time
- * @param params
- * @returns
- */
-function getMsgDate(params: { rawHeaders: string }): string | Date {
-	const { rawHeaders } = params;
-	// Example for the Date header
-	var headers = parseHeaders({ headers: rawHeaders });
-	if (!headers['Date']) {
-		return '-';
-	}
-	return new Date(headers['Date']);
-}
-
-/**
- * Function to clean the EML Body Text
- * @param params
- * @returns
- */
-const cleanEMLBody = (params: { text: string }) => {
-	if (!params.text) return '';
-	let cleanTxt = params.text.replace(/\r\n\r\n/g, '\r\n\r\n \r\n\r\n');
-	const pattern = /\[cid:.*?\]/g;
-	return cleanTxt.replace(pattern, '');
-};
-
-/**
- * Reads EML TFile And Returns ReadedEmlJson Format
- * @param params
- * @returns
- */
-const readEmlFile = async (params: { emlFile: TFile; plugin: MsgHandlerPlugin }): Promise<ReadedEmlJson> => {
-	const { emlFile, plugin } = params;
-	let emlFileRead = await plugin.app.vault.read(emlFile);
-	return new Promise((resolve, reject) => {
-		readEml(emlFileRead, (err, ReadedEMLJson) => {
-			if (err) {
-				reject(err);
-			} else {
-				resolve(ReadedEMLJson);
-			}
-		});
-	});
-};
-
-/**
- * Get the "TO" Sender Text and Render Sender Name and Sender Email from it
- * @param params
- * @returns
- */
 const parseEmlSender = (params: { senderText: string }): { senderName: string; senderEmail: string } => {
 	let { senderText } = params;
 	if (senderText === '' || senderText === undefined || senderText === null) {
@@ -142,11 +91,38 @@ const parseEmlSender = (params: { senderText: string }): { senderName: string; s
 	return { senderName, senderEmail };
 };
 
-/**
- * From EML To and CC create MSGRecipient List
- * @param params
- * @returns
- */
+function getMsgDate(params: { rawHeaders: string }): string | Date {
+	const { rawHeaders } = params;
+	// Example for the Date header
+	var headers = parseHeaders({ headers: rawHeaders });
+	if (!headers['Date']) {
+		return '-';
+	}
+	return new Date(headers['Date']);
+}
+
+const getCustomRecipients = (recipients: Ext_MSGReader_Recipient[]): MSGRecipient[] => {
+	if (recipients && recipients.length > 0) {
+		let customRecipients = [];
+		for (let recipient of recipients) {
+			customRecipients.push({
+				name: dataOrEmpty(recipient.name),
+				email: dataOrEmpty(recipient.email),
+			});
+		}
+		return customRecipients;
+	} else {
+		return [];
+	}
+};
+
+const cleanEMLBody = (params: { text: string }) => {
+	if (!params.text) return '';
+	let cleanTxt = params.text.replace(/\r\n\r\n/g, '\r\n\r\n \r\n\r\n');
+	const pattern = /\[cid:.*?\]/g;
+	return cleanTxt.replace(pattern, '');
+};
+
 const parseEMLRecipients = (params: { readEmlJson: ReadedEmlJson }): MSGRecipient[] => {
 	const { readEmlJson } = params;
 	let emlTo = dataOrEmpty(readEmlJson.headers.To);
@@ -166,12 +142,20 @@ const parseEMLRecipients = (params: { readEmlJson: ReadedEmlJson }): MSGRecipien
 	return msgRecipients;
 };
 
-/**
- * This function is to extract attachments coming from MsgReader Library and convert into MSGAttachment that
- * is later consumed by MSGRenderData
- * @param params
- * @returns
- */
+const readEmlFile = async (params: { emlFile: TFile; plugin: MsgHandlerPlugin }): Promise<ReadedEmlJson> => {
+	const { emlFile, plugin } = params;
+	let emlFileRead = await plugin.app.vault.read(emlFile);
+	return new Promise((resolve, reject) => {
+		readEml(emlFileRead, (err, ReadedEMLJson) => {
+			if (err) {
+				reject(err);
+			} else {
+				resolve(ReadedEMLJson!);
+			}
+		});
+	});
+};
+
 const extractMSGAttachments = (params: {
 	msgReader: MSGReader;
 	fileDataAttachments: Ext_MSGReader_Attachment[];
@@ -183,23 +167,18 @@ const extractMSGAttachments = (params: {
 		msgAttachments.push({
 			fileName: attRead.fileName,
 			fileExtension: fileDataAttachment.extension,
-			fileBase64: attRead.content ? uint8ArrayToBase64(attRead.content) : null,
+			fileBase64: attRead.content ? uint8ArrayToBase64(attRead.content) : '{}',
 		});
 	}
 	return msgAttachments;
 };
 
-/**
- * Extract Attachments from EML File Read
- * @param params
- * @returns
- */
 const extractEMLAttachments = (params: { emlFileReadJson: ReadedEmlJson }): MSGAttachment[] => {
 	const { emlFileReadJson } = params;
 
 	if (emlFileReadJson.attachments && emlFileReadJson.attachments.length > 0) {
 		let attachments: MSGAttachment[] = [];
-		for (let attachment of params.emlFileReadJson.attachments) {
+		for (let attachment of params.emlFileReadJson.attachments!) {
 			let fileNameParts = attachment.name.split('.');
 			let extension = fileNameParts[fileNameParts.length - 1];
 			attachments.push({
@@ -214,111 +193,10 @@ const extractEMLAttachments = (params: { emlFileReadJson: ReadedEmlJson }): MSGA
 	}
 };
 
-/**
- * This function is to convert Recipients from MsgReader Library format to MSGRecipient format
- * @param recipients
- * @returns
- */
-const getCustomRecipients = (recipients: Ext_MSGReader_Recipient[]): MSGRecipient[] => {
-	if (recipients && recipients.length > 0) {
-		let customRecipients = [];
-		for (let recipient of recipients) {
-			customRecipients.push({
-				name: dataOrEmpty(recipient.name),
-				email: dataOrEmpty(recipient.email),
-			});
-		}
-		return customRecipients;
-	} else {
-		return [];
-	}
-};
-
-/**
- * Checks object if it is null and returns empty string if null
- * @param data
- * @returns
- */
 const dataOrEmpty = (data: any) => {
 	return data ? data : '';
 };
 
-/**
- * Obsidians native markdown renderer function
- * @param mdContent
- * @param destEl
- */
-export const renderMarkdown = async (mdContent: string, destEl: HTMLElement) => {
-	await MarkdownRenderer.renderMarkdown(mdContent, destEl, '', null as unknown as Component);
-};
-
-/**
- * Helps to cleanup the new line signs within Rich Text Editor format, which is \r\n
- * @param txt
- * @returns
- */
-export const replaceNewLinesAndCarriages = (txt: string) => {
-	return txt?.replace(/[\r\n]+/g, '');
-};
-
-/**
- * This function extracts the file name (including extension) from a full file path
- * @param filePath
- * @returns
- */
-export const getFileName = (filePath: string) => {
-	var index = filePath.lastIndexOf('/');
-	if (index !== -1) return filePath.substring(index + 1);
-	return filePath;
-};
-
-/**
- * Helper to open a file passed in params within Obsidian (Tab/Separate)
- * @param params
- */
-export const openFile = (params: {
-	file: TFile;
-	plugin: MsgHandlerPlugin;
-	newLeaf: boolean;
-	leafBySplit?: boolean;
-}) => {
-	const { file, plugin, newLeaf, leafBySplit } = params;
-	let leaf = plugin.app.workspace.getLeaf(newLeaf);
-	if (!newLeaf && leafBySplit) leaf = plugin.app.workspace.createLeafBySplit(leaf, 'vertical');
-	plugin.app.workspace.setActiveLeaf(leaf, { focus: true });
-	leaf.openFile(file, { eState: { focus: true } });
-};
-
-/**
- * This function will open the file provided as a new tab
- * @param params
- */
-export const openFileInNewTab = (params: { plugin: MsgHandlerPlugin; file: TFile }) => {
-	openFile({ file: params.file, plugin: params.plugin, newLeaf: true });
-};
-
-/**
- * This function will open the file as a separate column and will create a new split leaf
- * @param params
- */
-export const openFileInNewTabGroup = (params: { plugin: MsgHandlerPlugin; file: TFile }) => {
-	openFile({ file: params.file, plugin: params.plugin, newLeaf: false, leafBySplit: true });
-};
-
-/**
- * Check if event is a mouse event
- * @param e
- * @returns
- */
-export function isMouseEvent(e: React.TouchEvent | React.MouseEvent): e is React.MouseEvent {
-	return e && 'screenX' in e;
-}
-
-/**
- * Convert base64 string to Uint8Array
- * @param base64
- * @returns
- */
 export function base64ToArrayBuffer(base64: string): Uint8Array {
 	var binary_string = window.atob(base64);
 	var len = binary_string.length;
@@ -336,4 +214,37 @@ export function base64ToArrayBuffer(base64: string): Uint8Array {
  */
 export function uint8ArrayToBase64(uint8Array: Uint8Array): string {
 	return Base64.fromUint8Array(uint8Array);
+}
+
+/* ---------- search utils ------------ */
+
+export const getFileName = (filePath: string) => {
+	var index = filePath.lastIndexOf('/');
+	if (index !== -1) return filePath.substring(index + 1);
+	return filePath;
+};
+
+export const replaceNewLinesAndCarriages = (txt: string) => {
+	return txt?.replace(/[\r\n]+/g, '');
+};
+
+export const openFile = (params: {
+	file: TFile;
+	plugin: MsgHandlerPlugin;
+	newLeaf: boolean;
+	leafBySplit?: boolean;
+}) => {
+	const { file, plugin, newLeaf, leafBySplit } = params;
+	let leaf = plugin.app.workspace.getLeaf(newLeaf);
+	if (!newLeaf && leafBySplit) leaf = plugin.app.workspace.createLeafBySplit(leaf, 'vertical');
+	plugin.app.workspace.setActiveLeaf(leaf, { focus: true });
+	leaf.openFile(file, { eState: { focus: true } });
+};
+
+export const openFileInNewTab = (params: { plugin: MsgHandlerPlugin; file: TFile }) => {
+	openFile({ file: params.file, plugin: params.plugin, newLeaf: true });
+};
+
+export function isMouseEvent(e: React.TouchEvent | React.MouseEvent): e is React.MouseEvent {
+	return e && 'screenX' in e;
 }

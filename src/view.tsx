@@ -1,11 +1,17 @@
-import { FileView, TFile, WorkspaceLeaf, ItemView } from 'obsidian';
+import { FileView, WorkspaceLeaf, TFile, ItemView } from 'obsidian';
 import MsgHandlerPlugin from 'main';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import SearchViewComponent from 'components/search';
 import RendererViewComponent from 'components/renderer';
+import SearchViewComponent from 'components/search';
 
-/* ------------ CORE MSG HANDLER RENDERER WITH REACT ------------ */
+
+/* ----------------------------------------------------------------*/
+export const ICON = 'MSG_HANDLER_ENVELOPE_ICON';
+export const SEARCH_VIEW_TYPE = 'msg-handler-search-view';
+
+
+// Core Msg Handler Renderer with React
 
 export const renderMsgFileToElement = async (params: {
 	msgFile: TFile;
@@ -24,9 +30,11 @@ export const renderMsgFileToElement = async (params: {
 	});
 };
 
-/* ------------ RENDERER VIEW FOR FILE PREVIEW ------------ */
 
-export const RENDER_VIEW_TYPE = 'msg-handler-view';
+
+// Render view for File Preview
+
+export const RENDER_VIEW_TYPE = 'msg-handler-view'
 
 export class MsgHandlerView extends FileView {
 	plugin: MsgHandlerPlugin;
@@ -60,7 +68,7 @@ export class MsgHandlerView extends FileView {
 	}
 
 	async onClose(): Promise<void> {
-		this.plugin.cleanLoadedBlobs({ all: false, forMsgFile: this.fileToRender });
+		//this.plugin.cleanLoadedBlobs({ all: false, forMsgFile: this.fileToRender });
 	}
 
 	async onUnloadFile(file: TFile): Promise<void> {
@@ -72,8 +80,7 @@ export class MsgHandlerView extends FileView {
 /* ------------ SEARCH VIEW FOR MSG CONTENTS ------------ */
 
 export const SEARCH_VIEW_DISPLAY_TEXT = 'MSG Handler Search';
-export const SEARCH_VIEW_TYPE = 'msg-handler-search-view';
-export const ICON = 'MSG_HANDLER_ENVELOPE_ICON';
+
 
 export class MsgHandlerSearchView extends ItemView {
 	plugin: MsgHandlerPlugin;

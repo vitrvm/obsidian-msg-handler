@@ -46,7 +46,7 @@ export const getAllDBMessageContents = async (): Promise<MSGDataIndexed[]> => {
  */
 export const getDBMessageContentsByPath = async (params: { filePath: string }): Promise<MSGDataIndexed[]> => {
 	const { filePath } = params;
-	return await pluginDb.dbMessageContents.where('filePath').equals(filePath).toArray();
+	return await pluginDb.dbMessageContents.where('filePath').equals(filePath.replace(/\d+$/g, "")).toArray();
 };
 
 /**
