@@ -12,7 +12,7 @@ export class MsgHandlerDatabase extends Dexie {
 	constructor() {
 		super('MsgHandlerDatabase');
 		this.version(1).stores({
-			dbMessageContents: '++id, senderName, senderEmail, recipients, subject, body, &filePath, mtime',
+			dbMessageContents: '++id, senderName, senderEmail, recipients, subject, body, filePath, mtime',
 		});
 	}
 }
@@ -46,7 +46,7 @@ export const getAllDBMessageContents = async (): Promise<MSGDataIndexed[]> => {
  */
 export const getDBMessageContentsByPath = async (params: { filePath: string }): Promise<MSGDataIndexed[]> => {
 	const { filePath } = params;
-	return await pluginDb.dbMessageContents.where('filePath').equals(filePath.replace(/\d+$/g, "")).toArray();
+	return await pluginDb.dbMessageContents.where('filePath').equals(filePath).toArray();
 };
 
 /**
