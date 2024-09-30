@@ -17,16 +17,7 @@ export default function RendererViewComponent(params: { plugin: MsgHandlerPlugin
 		});
 	}, []);
 
-        /*
-	return (
-		messageContent && (
-			<>
-				<MSGHeaderComponent messageContent={messageContent} />
-			</>
-		)
-	);
-    */
-   return <><MSGHeaderComponent messageContent={messageContent!} /></>
+   return messageContent && <><MSGHeaderComponent messageContent={messageContent!} /></>
 }
 
 const MSGHeaderComponent = (params: { messageContent: MSGRenderData }) => {
